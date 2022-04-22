@@ -637,6 +637,7 @@ class StreamHandler extends Object with TerminatableMixin, ClosableMixin {
   void _handleDataFrame(Http2StreamImpl stream, DataFrame frame) {
     if (stream.state != StreamState.Open &&
         stream.state != StreamState.HalfClosedLocal) {
+      incomingQueue.processIgnoredDataFrame(frame); // update connection window
       throw StreamClosedException(
           stream.id, 'Expected open state (was: ${stream.state}).');
     }
@@ -772,7 +773,7 @@ class StreamHandler extends Object with TerminatableMixin, ClosableMixin {
     if (stream.state != StreamState.Terminated) {
       _changeState(stream, StreamState.Terminated);
     }
-    stream.incomingQueue.terminate(propagateException ? exception : null);
+    // keep the incoming queue open for window updates (don't call terminate)
     stream._outgoingCSubscription.cancel();
     stream._outgoingC.close();
 
